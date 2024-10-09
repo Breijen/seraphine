@@ -5,7 +5,6 @@ use spin::Mutex;
 use lazy_static::lazy_static;
 use volatile::Volatile;
 
-
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -145,4 +144,12 @@ macro_rules! print {
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
     WRITER.lock().write_fmt(args).unwrap();
+}
+
+// ----------------------------------------------------------------------------------------
+// Tests
+
+#[test_case]
+fn test_println() {
+    println!("test_println output")
 }
