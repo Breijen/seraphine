@@ -3,6 +3,7 @@
 #![feature(custom_test_frameworks)]
 #![test_runner(seraphine::test_runner)]
 #![reexport_test_harness_main = "test_main"]
+#![feature(abi_x86_interrupt)]
 
 use core::panic::PanicInfo;
 use seraphine::println;
@@ -12,9 +13,12 @@ use seraphine::print;
 pub extern "C" fn _start() -> ! {
     println!("Hello World{}", "!");
 
+    seraphine::init();
+
     #[cfg(test)]
     test_main();
 
+    println!("It did not crash!");
     loop {}
 }
 
