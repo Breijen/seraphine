@@ -1,15 +1,19 @@
-use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
+use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
+use x86_64::instructions::port::Port;
 use pic8259::ChainedPics;
 use spin;
 
 use crate::println;
 use crate::print;
 use crate::gdt;
+use crate::hlt_loop;
 
 use lazy_static::lazy_static;
+use crate::vga_buffer::WRITER;
 
 pub const PIC_1_OFFSET: u8 = 32;
 pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
+
 
 pub static PICS: spin::Mutex<ChainedPics> =
     spin::Mutex::new(unsafe { ChainedPics::new(PIC_1_OFFSET, PIC_2_OFFSET)});
@@ -46,6 +50,8 @@ lazy_static! {
         idt[InterruptIndex::Keyboard.as_usize()]
             .set_handler_fn(keyboard_interrupt_handler);
 
+        idt.page_fault.set_handler_fn(page_fault_handler);
+
         idt
     };
 }
@@ -68,9 +74,23 @@ extern "x86-interrupt" fn double_fault_handler(
 extern "x86-interrupt" fn timer_interrupt_handler(
     _stack_frame: InterruptStackFrame)
 {
-    print!(".");
+    static mut COUNTER: u32 = 0;
+    static mut TOGGLE: bool = false;
 
     unsafe {
+        COUNTER += 1;
+        if COUNTER >= 8 {
+            let mut writer = WRITER.lock();
+            writer.toggle_prompt(TOGGLE);
+            TOGGLE = !TOGGLE;
+            COUNTER = 0;
+        }
+    }
+
+    unsafe {
+        let mut port = Port::new(0x20);
+        port.write(0x20u8);
+
         PICS.lock()
             .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
     }
@@ -107,6 +127,19 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(
         PICS.lock()
             .notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
     }
+}
+
+extern "x86-interrupt" fn page_fault_handler(
+    stack_frame: InterruptStackFrame,
+    error_code: PageFaultErrorCode,
+) {
+    use x86_64::registers::control::Cr2;
+
+    println!("EXPECTION: PAGE FAULT");
+    println!("Accessed Address: {:?}", Cr2::read());
+    println!("Error code: {:?}", error_code);
+    println!("{:#?}", stack_frame);
+    hlt_loop();
 }
 
 #[test_case]

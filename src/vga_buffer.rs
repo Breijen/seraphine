@@ -1,5 +1,7 @@
 use core::fmt;
 use core::fmt::Write;
+use alloc::string::{String, ToString};
+
 use spin::Mutex;
 
 use lazy_static::lazy_static;
@@ -53,37 +55,55 @@ struct Buffer {
 }
 
 pub struct Writer {
-    column_position: usize,
+    prompt_position: usize,
+    cursor_position: usize,
+    input_buffer: String,
     color_code: ColorCode,
     buffer: &'static mut Buffer,
+    user_input_mode: bool,
 }
 
-lazy_static!{
+lazy_static! {
     pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
-        column_position: 0,
+        prompt_position: 1,
+        cursor_position: 3,
+        input_buffer: String::new(),
         color_code: ColorCode::new(Color::Red, Color::Black),
         buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
+        user_input_mode: false,
     });
 }
 
 impl Writer {
     pub fn write_byte(&mut self, byte: u8) {
         match byte {
-            b'\n' => self.new_line(),
+            b'\n' => {
+                if self.user_input_mode {
+                    self.user_input_mode = false;
+                    self.execute_command();
+                }
+                self.new_line();
+            }
             byte => {
-                if self.column_position >= BUFFER_WIDTH {
+                if self.cursor_position >= BUFFER_WIDTH {
                     self.new_line();
                 }
 
                 let row = BUFFER_HEIGHT - 1;
-                let col = self.column_position;
+                let col = self.cursor_position;
 
                 let color_code = self.color_code;
                 self.buffer.chars[row][col].write(ScreenChar {
                     ascii_character: byte,
                     color_code,
                 });
-                self.column_position += 1;
+
+                // Alleen toevoegen aan de input buffer als we in de gebruikersinvoer-modus zijn
+                if self.user_input_mode {
+                    self.input_buffer.push(byte as char);
+                }
+
+                self.cursor_position += 1;
             }
         }
     }
@@ -105,8 +125,10 @@ impl Writer {
                 self.buffer.chars[row - 1][col].write(character);
             }
         }
+
         self.clear_row(BUFFER_HEIGHT - 1);
-        self.column_position = 0;
+        self.cursor_position = 3;
+        self.input_buffer.clear();
     }
 
     fn clear_row(&mut self, row: usize) {
@@ -118,6 +140,43 @@ impl Writer {
             self.buffer.chars[row][col].write(blank);
         }
     }
+
+    pub fn toggle_prompt(&mut self, visible: bool) {
+        let row = BUFFER_HEIGHT - 1;
+        let col = self.prompt_position;
+
+        let color_code = self.color_code;
+        let ascii_character = if visible { b'>' } else { b' ' };
+
+        self.buffer.chars[row][col].write(ScreenChar {
+            ascii_character,
+            color_code,
+        });
+
+        self.user_input_mode = true;
+    }
+
+    pub fn execute_command(&mut self) {
+        let command = self.input_buffer.trim().to_string();
+
+        match command.as_str() {
+            "help" => {
+                self.write_string("\n");
+                self.write_string("\nAvailable commands:\n");
+                self.write_string("help  - Show this help message\n");
+                self.write_string("clear - Clear the screen\n");
+                self.write_string("echo  - Echo the input text\n");
+            }
+            _ => {
+                self.write_string("\nUnknown command: ");
+                self.write_string(&command);
+                self.write_string("\nType 'help' to see available commands.\n");
+            }
+        }
+
+        self.input_buffer.clear();
+    }
+
 }
 
 impl fmt::Write for Writer {
@@ -169,7 +228,7 @@ fn test_println_output() {
         let mut writer = WRITER.lock();
         writeln!(writer, "\n{}", s).expect("writeln failed");
         for (i, c) in s.chars().enumerate() {
-            let screen_char = writer.buffer.chars[BUFFER_HEIGHT - 2][i].read();
+            let screen_char = writer.buffer.chars[BUFFER_HEIGHT - 2][i + writer.prompt_position + 2].read();
             assert_eq!(char::from(screen_char.ascii_character), c);
         }
     });
