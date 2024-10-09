@@ -6,6 +6,8 @@ edition = "2021"
 [dependencies]
 x86_64 = "0.14.2"
 uart_16550 = "0.2.0"
+pic8259 = "0.10.1"
+pc-keyboard = "0.7.0"
 bootloader = "0.9.8"
 lazy_static = { version = "1.5.0", features = ["spin_no_std"] }
 volatile = "0.2.6"
