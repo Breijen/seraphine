@@ -12,10 +12,13 @@ use core::panic::PanicInfo;
 use bootloader::{BootInfo, entry_point};
 use x86_64::VirtAddr;
 
-use seraphine::{println};
+use seraphine::{hardware, println};
 use seraphine::print;
+use seraphine::task::keyboard;
 use seraphine::memory::{self, BootInfoFrameAllocator};
 use seraphine::allocator;
+use seraphine::task::{Task};
+use seraphine::task::executor::Executor;
 
 entry_point!(kernel_main);
 
@@ -36,10 +39,12 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     allocator::init_heap(&mut mapper, &mut frame_allocator)
         .expect("heap initialization failed");
 
+    let mut executor = Executor::new(); // new
+    executor.spawn(Task::new(keyboard::print_keypresses()));
+    executor.run();
+
     #[cfg(test)]
     test_main();
-
-    seraphine::hlt_loop();
 }
 
 /// This function is called on panic.

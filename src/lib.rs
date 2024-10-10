@@ -7,6 +7,7 @@
 
 pub mod hardware;
 pub mod filesystem;
+pub mod task;
 pub mod serial;
 
 pub mod interrupts;
@@ -14,6 +15,7 @@ pub mod gdt;
 pub mod memory;
 pub mod allocator;
 pub mod vga_buffer;
+pub mod logger;
 
 extern crate alloc;
 

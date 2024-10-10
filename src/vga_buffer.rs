@@ -6,6 +6,8 @@ use spin::Mutex;
 
 use lazy_static::lazy_static;
 use volatile::Volatile;
+use x86_64::instructions::interrupts;
+use crate::{hardware, serial_println};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -226,7 +228,6 @@ impl Writer {
         }
         self.cursor_position = self.prompt_position + 2; // Reset cursorpositie na de prompt
     }
-
 }
 
 impl fmt::Write for Writer {
