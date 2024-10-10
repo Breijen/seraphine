@@ -9,6 +9,7 @@ use crate::gdt;
 use crate::hlt_loop;
 
 use lazy_static::lazy_static;
+use pc_keyboard::KeyCode;
 use crate::vga_buffer::WRITER;
 
 pub const PIC_1_OFFSET: u8 = 32;
@@ -117,7 +118,13 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(
     if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
         if let Some(key) = keyboard.process_keyevent(key_event) {
             match key {
-                DecodedKey::Unicode(character) => print!("{}", character),
+                DecodedKey::Unicode(character) => {
+                    if character == '\u{8}' {
+                        WRITER.lock().write_byte(0x08);
+                    } else {
+                        print!("{}", character);
+                    }
+                },
                 DecodedKey::RawKey(key) => print!("{:?}", key),
             }
         }

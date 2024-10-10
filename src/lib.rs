@@ -5,12 +5,15 @@
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
+pub mod hardware;
+pub mod filesystem;
 pub mod serial;
-pub mod vga_buffer;
+
 pub mod interrupts;
 pub mod gdt;
 pub mod memory;
 pub mod allocator;
+pub mod vga_buffer;
 
 extern crate alloc;
 
@@ -85,6 +88,7 @@ pub fn test_panic_handler(info: &PanicInfo) -> ! {
 pub fn init() {
     gdt::init();
     interrupts::init_idt();
+    hardware::vga::disable_hardware_cursor();
     unsafe { interrupts::PICS.lock().initialize() };
     x86_64::instructions::interrupts::enable();
 }

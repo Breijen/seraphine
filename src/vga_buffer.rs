@@ -1,7 +1,7 @@
 use core::fmt;
 use core::fmt::Write;
 use alloc::string::{String, ToString};
-
+use alloc::vec::Vec;
 use spin::Mutex;
 
 use lazy_static::lazy_static;
@@ -84,7 +84,26 @@ impl Writer {
                 }
                 self.new_line();
             }
+            b'\x08' => {
+                if self.cursor_position > self.prompt_position + 2 {
+                    self.move_cursor_left();
+                    let row = BUFFER_HEIGHT - 1;
+                    let col = self.cursor_position;
+
+                    // Wis het karakter van het scherm door een spatie te schrijven
+                    self.buffer.chars[row][col].write(ScreenChar {
+                        ascii_character: b' ',
+                        color_code: self.color_code,
+                    });
+
+                    // Verwijder het laatste karakter van de invoerbuffer, indien we in gebruikersmodus zijn
+                    if self.user_input_mode && !self.input_buffer.is_empty() {
+                        self.input_buffer.pop();
+                    }
+                }
+            }
             byte => {
+
                 if self.cursor_position >= BUFFER_WIDTH {
                     self.new_line();
                 }
@@ -106,6 +125,7 @@ impl Writer {
                 self.cursor_position += 1;
             }
         }
+
     }
 
     pub fn write_string(&mut self, s: &str) {
@@ -131,16 +151,6 @@ impl Writer {
         self.input_buffer.clear();
     }
 
-    fn clear_row(&mut self, row: usize) {
-        let blank = ScreenChar {
-            ascii_character: b' ',
-            color_code: self.color_code,
-        };
-        for col in 0..BUFFER_WIDTH {
-            self.buffer.chars[row][col].write(blank);
-        }
-    }
-
     pub fn toggle_prompt(&mut self, visible: bool) {
         let row = BUFFER_HEIGHT - 1;
         let col = self.prompt_position;
@@ -156,16 +166,39 @@ impl Writer {
         self.user_input_mode = true;
     }
 
+    pub fn move_cursor_left(&mut self) {
+        if self.cursor_position > self.prompt_position {
+            self.cursor_position -= 1;
+        }
+    }
+}
+
+impl Writer {
     pub fn execute_command(&mut self) {
         let command = self.input_buffer.trim().to_string();
 
-        match command.as_str() {
+        let mut parts = command.split_whitespace();
+        let command_name = parts.next().unwrap_or("");
+        let arguments: Vec<&str> = parts.collect();
+
+        match command_name {
             "help" => {
                 self.write_string("\n");
                 self.write_string("\nAvailable commands:\n");
                 self.write_string("help  - Show this help message\n");
                 self.write_string("clear - Clear the screen\n");
                 self.write_string("echo  - Echo the input text\n");
+            }
+            "clear" => {
+                self.clear_screen();
+            }
+            "echo" => {
+                self.write_string("\n");
+                for arg in arguments {
+                    self.write_string(arg);
+                    self.write_string(" ");
+                }
+                self.write_string("\n");
             }
             _ => {
                 self.write_string("\nUnknown command: ");
@@ -175,6 +208,23 @@ impl Writer {
         }
 
         self.input_buffer.clear();
+    }
+
+    fn clear_row(&mut self, row: usize) {
+        let blank = ScreenChar {
+            ascii_character: b' ',
+            color_code: self.color_code,
+        };
+        for col in 0..BUFFER_WIDTH {
+            self.buffer.chars[row][col].write(blank);
+        }
+    }
+
+    pub fn clear_screen(&mut self) {
+        for row in 0..BUFFER_HEIGHT {
+            self.clear_row(row);
+        }
+        self.cursor_position = self.prompt_position + 2; // Reset cursorpositie na de prompt
     }
 
 }
