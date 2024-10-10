@@ -202,6 +202,9 @@ impl Writer {
                 }
                 self.write_string("\n");
             }
+            "scan" => {
+                hardware::pci::display_disks(self);
+            }
             _ => {
                 self.write_string("\nUnknown command: ");
                 self.write_string(&command);
