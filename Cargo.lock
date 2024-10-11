@@ -27,6 +27,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b048fb63fd8b5923fc5aa7b340d8e156aec7ec02f0c78fa8a6ddc2613f6f71de"
 
 [[package]]
+name = "block_device"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "34debcf14cf4dc2fe9031aa5cbb3b6e05d930a26dcbd657b102270b11456bed6"
+
+[[package]]
 name = "bootloader"
 version = "0.9.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -61,6 +67,15 @@ name = "crossbeam-utils"
 version = "0.8.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "22ec99545bb0ed0ea7bb9b8e1e9122ea386ff8a48c0922e43f36d45ab09e0e80"
+
+[[package]]
+name = "fat32"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04ade4c8dc650037c07d4d1d3329851b8bdbab0da8d2b83ac5d7114174702c17"
+dependencies = [
+ "block_device",
+]
 
 [[package]]
 name = "futures-core"
@@ -175,6 +190,7 @@ dependencies = [
  "bootloader",
  "conquer-once",
  "crossbeam-queue",
+ "fat32",
  "futures-util",
  "lazy_static",
  "linked_list_allocator",

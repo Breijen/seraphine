@@ -1,9 +1,12 @@
 use x86_64::{
-    structures::paging::{PageTable, OffsetPageTable, Page, PhysFrame, Mapper, Size4KiB, FrameAllocator},
+    structures::paging::{PageTable, OffsetPageTable, Page, PhysFrame, Mapper, Size4KiB, FrameAllocator, PageTableFlags as Flags},
     VirtAddr,
     PhysAddr,
 };
+
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
+
+use crate::serial_println;
 
 pub struct BootInfoFrameAllocator {
     memory_map: &'static MemoryMap,
@@ -104,19 +107,21 @@ fn translate_addr_inner(addr: VirtAddr, physical_memory_offset: VirtAddr)
     Some(frame.start_address() + u64::from(addr.page_offset()))
 }
 
-pub fn create_example_mapping(
-    page: Page,
+pub fn map_nvme_base(
+    nvme_base_addr: u64,
+    virt_addr: VirtAddr,
     mapper: &mut OffsetPageTable,
     frame_allocator: &mut impl FrameAllocator<Size4KiB>,
 ) {
-    use x86_64::structures::paging::PageTableFlags as Flags;
-
-    let frame = PhysFrame::containing_address(PhysAddr::new(0xb8000));
+    let frame: PhysFrame<Size4KiB> = PhysFrame::containing_address(PhysAddr::new(nvme_base_addr));
+    let page: Page<Size4KiB> = Page::containing_address(virt_addr);
     let flags = Flags::PRESENT | Flags::WRITABLE;
 
     let map_to_result = unsafe {
-        // FIXME: this is not safe, we do it only for testing
         mapper.map_to(page, frame, flags, frame_allocator)
     };
+
+    serial_println!("{:?}", map_to_result);
+
     map_to_result.expect("map_to failed").flush();
 }

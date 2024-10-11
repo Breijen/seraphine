@@ -33,10 +33,25 @@ version = "0.3.4"
 default-features = false
 features = ["alloc"]
 
+[dependencies.fat32]
+version = "0.2"
+default-features = false
+features = ["1024"]
+
 [package.metadata.bootimage]
+run-args = [
+    "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04", "-serial", "stdio",
+    "-drive", "file=nvme_disk.img,if=none,id=nvme",
+    "-device", "nvme,drive=nvme,serial=1234",
+    "-m", "2G",
+]
 test-args = [
     "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04", "-serial", "stdio",
-    "-display", "none"
+    "-display", "none",
+    "-drive", "file=sata_disk.img,if=none,id=mydrive",
+    "-device", "ide-hd,drive=mydrive",
+    "-m", "2G",
+    "-enable-kvm"
 ]
 test-success-exit-code = 33
 test-timeout = 30

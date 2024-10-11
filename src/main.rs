@@ -17,6 +17,7 @@ use seraphine::print;
 use seraphine::task::keyboard;
 use seraphine::memory::{self, BootInfoFrameAllocator};
 use seraphine::allocator;
+use seraphine::filesystem::nvme;
 use seraphine::task::{Task};
 use seraphine::task::executor::Executor;
 
@@ -35,6 +36,8 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     let mut frame_allocator = unsafe {
         BootInfoFrameAllocator::init(&boot_info.memory_map)
     };
+
+    nvme::init_controller(&mut mapper, &mut frame_allocator);
 
     allocator::init_heap(&mut mapper, &mut frame_allocator)
         .expect("heap initialization failed");

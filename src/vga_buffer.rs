@@ -1,13 +1,14 @@
 use core::fmt;
-use core::fmt::Write;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
-use spin::Mutex;
 
+use spin::Mutex;
 use lazy_static::lazy_static;
 use volatile::Volatile;
+
 use x86_64::instructions::interrupts;
-use crate::{hardware, serial_println};
+
+use crate::{hardware};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
