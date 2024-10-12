@@ -1,3 +1,5 @@
 
 pub mod vga;
-pub mod pci;
+pub mod PCI;
+pub mod RSDP;
+pub mod HPET;

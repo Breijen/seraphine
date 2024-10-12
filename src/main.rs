@@ -12,7 +12,7 @@ use core::panic::PanicInfo;
 use bootloader::{BootInfo, entry_point};
 use x86_64::VirtAddr;
 
-use seraphine::{hardware, println};
+use seraphine::{println};
 use seraphine::print;
 use seraphine::task::keyboard;
 use seraphine::memory::{self, BootInfoFrameAllocator};
@@ -37,8 +37,13 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
         BootInfoFrameAllocator::init(&boot_info.memory_map)
     };
 
+    //Mapping BIOS
+    memory::map_bios_area(&mut mapper, &mut frame_allocator);
+
+    //MAPPING HARD DRIVES
     nvme::init_controller(&mut mapper, &mut frame_allocator);
 
+    // HEAP ALLOCATOR
     allocator::init_heap(&mut mapper, &mut frame_allocator)
         .expect("heap initialization failed");
 

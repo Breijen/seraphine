@@ -5,7 +5,7 @@ use x86_64::{
 };
 
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
-
+use crate::hardware::RSDP::{find_rsdp};
 use crate::serial_println;
 
 pub struct BootInfoFrameAllocator {
@@ -124,4 +124,48 @@ pub fn map_nvme_base(
     serial_println!("{:?}", map_to_result);
 
     map_to_result.expect("map_to failed").flush();
+}
+
+pub fn map_bios_area(
+    mapper: &mut impl Mapper<Size4KiB>,
+    frame_allocator: &mut impl FrameAllocator<Size4KiB>
+) {
+    let bios_start = PhysAddr::new(0xE0000); // Start of BIOS memory
+    let bios_end = PhysAddr::new(0xFFFFF);   // End of BIOS memory
+    let bios_size = bios_end.as_u64() - bios_start.as_u64() + 1;
+
+    let num_pages = (bios_size / 4096) as usize; // Number of pages to map
+
+    for i in 0..num_pages {
+        let frame = PhysFrame::containing_address(bios_start + i as u64 * 4096);
+        let page = Page::containing_address(VirtAddr::new(bios_start.as_u64() + i as u64 * 4096));
+
+        // Map each page
+        unsafe {
+            mapper.map_to(page, frame, Flags::PRESENT | Flags::WRITABLE, frame_allocator)
+                .expect("Mapping failed")
+                .flush();
+        }
+    }
+
+    if let Some(rsdp) = find_rsdp() {
+        let rsdt_address = rsdp.rsdt_address as u64;
+        map_rsdt_area(rsdt_address, mapper, frame_allocator);
+    }
+}
+
+pub fn map_rsdt_area(
+    rsdt_address: u64,
+    mapper: &mut impl Mapper<Size4KiB>,
+    frame_allocator: &mut impl FrameAllocator<Size4KiB>
+) {
+    let frame = PhysFrame::containing_address(PhysAddr::new(rsdt_address));
+    let page = Page::containing_address(VirtAddr::new(rsdt_address));
+
+    unsafe {
+        // Map the page containing the RSDT into virtual memory
+        mapper.map_to(page, frame, Flags::PRESENT | Flags::WRITABLE, frame_allocator)
+            .expect("Failed to map RSDT")
+            .flush();
+    }
 }

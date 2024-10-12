@@ -6,8 +6,6 @@ use spin::Mutex;
 use lazy_static::lazy_static;
 use volatile::Volatile;
 
-use x86_64::instructions::interrupts;
-
 use crate::{hardware};
 
 #[allow(dead_code)]
@@ -204,7 +202,7 @@ impl Writer {
                 self.write_string("\n");
             }
             "scan" => {
-                hardware::pci::display_disks(self);
+                hardware::PCI::display_disks(self);
             }
             _ => {
                 self.write_string("\nUnknown command: ");
