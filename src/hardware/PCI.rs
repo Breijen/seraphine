@@ -6,7 +6,6 @@ use x86_64::instructions::port::Port;
 
 use crate::filesystem::nvme::read_nvme;
 
-
 #[derive(Debug, Clone, Copy)]
 pub struct PciDevice {
     pub bus: u8,

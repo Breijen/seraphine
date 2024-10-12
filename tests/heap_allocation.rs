@@ -12,12 +12,12 @@ use alloc::string::String;
 
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
-use seraphine::allocator::HEAP_SIZE;
+use seraphine::memory::allocator::HEAP_SIZE;
 
 entry_point!(main);
 
 fn main(boot_info: &'static BootInfo) -> ! {
-    use seraphine::allocator;
+    use seraphine::memory::allocator;
     use seraphine::memory::{self, BootInfoFrameAllocator};
     use x86_64::VirtAddr;
 

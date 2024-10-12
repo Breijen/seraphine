@@ -5,8 +5,8 @@ use x86_64::{VirtAddr};
 
 use crate::vga_buffer::Writer;
 use crate::{log, serial_println};
-use crate::memory::map_nvme_base;
 use crate::hardware::PCI::read_pci_bar;
+use crate::mem::memory::map_nvme_base;
 
 static mut NVME_VIRT_ADDR: Option<VirtAddr> = None;
 
@@ -102,6 +102,5 @@ fn nvme_write_reg(nvme_virt_addr: u64, offset: u32, value: u32) {
     unsafe {
         let reg_addr = (nvme_virt_addr + offset as u64) as *mut u32;
         core::ptr::write_volatile(reg_addr, value);
-        serial_println!("Value {} has been written to {:?}", value, reg_addr);
     }
 }

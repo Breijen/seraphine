@@ -1,17 +1,5 @@
+use crate::hardware::HPET::ACPISDTHeader;
 use crate::serial_println;
-
-#[repr(C, packed)]
-struct ACPISDTHeader {
-    signature: [u8; 4],
-    length: u32,
-    revision: u8,
-    checksum: u8,
-    oem_id: [u8; 6],
-    oem_table_id: [u8; 8],
-    oem_revision: u32,
-    creator_id: u32,
-    creator_revision: u32,
-}
 
 #[repr(C, packed)]
 pub struct Rsdp {
@@ -68,26 +56,6 @@ fn print_rsdp(rsdp: &Rsdp) {
     }
 }
 
-fn print_rsdt(rsdt_address: u32) {
-    let rsdt_header = unsafe { &*(rsdt_address as *const ACPISDTHeader) };
-
-    // Copy the fields to local variables before printing
-    let length = rsdt_header.length;
-    let oem_revision = rsdt_header.oem_revision;
-    let creator_id = rsdt_header.creator_id;
-    let creator_revision = rsdt_header.creator_revision;
-
-    // Print RSDT header details
-    let signature_str = core::str::from_utf8(&rsdt_header.signature).unwrap_or("Invalid Signature");
-    serial_println!("RSDT Signature: {}", signature_str);
-    serial_println!("RSDT Length: {}", length);
-    serial_println!("RSDT OEM ID: {}", core::str::from_utf8(&rsdt_header.oem_id).unwrap_or("Invalid OEM ID"));
-    serial_println!("RSDT OEM Table ID: {}", core::str::from_utf8(&rsdt_header.oem_table_id).unwrap_or("Invalid Table ID"));
-    serial_println!("RSDT OEM Revision: {:#x}", oem_revision);
-    serial_println!("RSDT Creator ID: {:#x}", creator_id);
-    serial_println!("RSDT Creator Revision: {:#x}", creator_revision);
-}
-
 pub fn find_and_print_rsdp() {
     if let Some(rsdp) = find_rsdp() {
         print_rsdp(rsdp);
@@ -100,8 +68,6 @@ pub fn find_and_print_rsdt() {
     if let Some(rsdp) = find_rsdp() {
         let rsdt_address = rsdp.rsdt_address;
         serial_println!("RSDT Address from RSDP: {:#x}", rsdt_address);
-
-        print_rsdt(rsdt_address);
 
     } else {
         serial_println!("RSDP not found.");
