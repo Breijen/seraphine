@@ -5,10 +5,12 @@ use x86_64::{VirtAddr};
 
 use crate::vga_buffer::Writer;
 use crate::{log, serial_println};
-use crate::hardware::PCI::read_pci_bar;
+use crate::hardware::pci::read_pci_bar;
+use crate::hardware::pit::{timer_wait_ms};
 use crate::mem::memory::map_nvme_base;
 
 static mut NVME_VIRT_ADDR: Option<VirtAddr> = None;
+const NVME_RESET_TIMEOUT: u8 = 100;
 
 pub fn init_controller(mapper: &mut OffsetPageTable, frame_allocator: &mut impl FrameAllocator<Size4KiB>) {
     let nvme_base_addr = find_first_nvme();
@@ -28,15 +30,71 @@ fn reset_nvme(addr: u64) {
     let timeout = (cap >> 24) & 0xF;
 
     nvme_write_reg(addr, 0x14, 0);
-    serial_println!("Succesfully Reset");
+
+    wait_nvme_reset(addr);
+    enable_nvme(addr);
+
+    //serial_println!("Succesfully Reset");
 
 }
+
+fn wait_nvme_reset(addr: u64) {
+    let mut timeout = NVME_RESET_TIMEOUT;  // Bijv. timeout in milliseconden
+
+    timer_wait_ms(timeout as u64);
+
+    // Lees het CSTS-register om de reset status te controleren
+    unsafe {
+        let status = nvme_read_reg32(0x1C, addr);
+
+        serial_println!("STATUS: {:?}", status);
+
+        if (status) == 0 {
+            // Staat uit, zet nu weer aan.
+            nvme_write_reg(addr, 0x14, 1);
+
+            return;
+        }
+
+        // Wacht een bepaalde tijd (bijv. 1 ms per iteratie)
+        timer_wait_ms(1);  // Wacht 1 ms
+
+        // Verminder de timeout met de tijd die je hebt gewacht
+        timeout -= 1;
+    }
+
+    // Als we hier zijn, betekent dat dat de reset is mislukt vanwege een timeout
+    serial_println!("NVMe reset timed out");
+}
+
+fn enable_nvme(addr: u64) {
+    let mut timeout = NVME_RESET_TIMEOUT;
+    timer_wait_ms(timeout as u64);
+    unsafe {
+        let status = nvme_read_reg32(0x1C, addr);
+        serial_println!("STATUS: {:?}", status);
+
+        if (status) == 1 {
+            serial_println!("Succesfully Reset NVMe");
+            return;
+        }
+
+        // Wacht een bepaalde tijd (bijv. 1 ms per iteratie)
+        timer_wait_ms(1);  // Wacht 1 ms
+
+        // Verminder de timeout met de tijd die je hebt gewacht
+        timeout -= 1;
+    }
+
+    serial_println!("NVMe reset timed out");
+}
+
 
 pub fn find_first_nvme() -> u64 {
     for bus in 0..=255 {
         for device in 0..31 {
             for function in 0..7 {
-                if let Some(pci_device) = crate::hardware::PCI::get_pci_device(bus, device, function) {
+                if let Some(pci_device) = crate::hardware::pci::get_pci_device(bus, device, function) {
                     if pci_device.class_code == 0x01 && pci_device.subclass_code == 0x08 {
                         let base_adr = get_nvme_base_addr(bus, device, function) as u64;
 

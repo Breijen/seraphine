@@ -3,12 +3,13 @@ use x86_64::instructions::port::Port;
 use pic8259::ChainedPics;
 use spin;
 
-use crate::println;
+use crate::{println, serial_println};
 use crate::print;
 use crate::gdt;
 use crate::hlt_loop;
 
 use lazy_static::lazy_static;
+use crate::hardware::pit::timer_handler;
 use crate::vga_buffer::WRITER;
 
 pub const PIC_1_OFFSET: u8 = 32;
@@ -75,18 +76,15 @@ extern "x86-interrupt" fn timer_interrupt_handler(
     _stack_frame: InterruptStackFrame)
 {
     static mut COUNTER: u32 = 0;
-    static mut TOGGLE: bool = false;
 
     unsafe {
         COUNTER += 1;
-        if COUNTER >= 8 {
-            let mut writer = WRITER.lock();
-            writer.toggle_prompt(TOGGLE);
-            TOGGLE = !TOGGLE;
-            COUNTER = 0;
-        }
+
+        // Bevestig de interrupt door EOI naar de APIC te sturen
+        timer_handler()
     }
 
+    // Additionally, if you're using the legacy PIC, send the EOI there too
     unsafe {
         let mut port = Port::new(0x20);
         port.write(0x20u8);

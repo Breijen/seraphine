@@ -157,5 +157,5 @@ pub fn display_disks(writer: &mut Writer) {
 
     read_nvme(writer);
 
-    serial_println!("PCI scan completed, storage devices displayed.");
+    // serial_println!("PCI scan completed, storage devices displayed.");
 }

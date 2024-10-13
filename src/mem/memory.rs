@@ -5,8 +5,8 @@ use x86_64::{
 };
 
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
-use crate::hardware::HPET::{find_hpet_in_rsdt, init_hpet_addr};
-use crate::hardware::RSDP::find_rsdp;
+use crate::hardware::pit::{pit_init};
+use crate::hardware::rsdp::find_rsdp;
 use crate::serial_println;
 
 pub struct BootInfoFrameAllocator {
@@ -122,7 +122,7 @@ pub fn map_nvme_base(
         mapper.map_to(page, frame, flags, frame_allocator)
     };
 
-    serial_println!("{:?}", map_to_result);
+    // serial_println!("{:?}", map_to_result);
 
     map_to_result.expect("map_to failed").flush();
 }
@@ -154,10 +154,10 @@ pub fn map_bios_area(
     if let Some(rsdp) = find_rsdp() {
         let rsdt_address = rsdp.rsdt_address as u64;
         map_rsdt_area(rsdt_address, mapper, frame_allocator);
-
-        let hpet_virt = map_hpet_area(rsdt_address, mapper, frame_allocator);
-        init_hpet_addr(hpet_virt);
     }
+
+    //INIT PIT
+    pit_init();
 }
 
 pub fn map_rsdt_area(
@@ -174,29 +174,4 @@ pub fn map_rsdt_area(
             .expect("Failed to map RSDT")
             .flush();
     }
-}
-
-pub fn map_hpet_area(
-    hpet_base: u64,
-    mapper: &mut impl Mapper<Size4KiB>,
-    frame_allocator: &mut impl FrameAllocator<Size4KiB>
-) -> VirtAddr {
-    // Zorg ervoor dat het adres uitgelijnd is op een 8-byte grens
-    let aligned_hpet_base = (hpet_base + 7) & !7; // Rondt op naar het dichtstbijzijnde veelvoud van 8
-
-    serial_println!("BASE UNALIGNED: {:#x}, Aligned BASE: {:#x}", hpet_base, aligned_hpet_base);
-
-    let virt_hpet_base = VirtAddr::new(0xFFFF_8000_0000_0000 + aligned_hpet_base);
-
-    let frame = PhysFrame::containing_address(PhysAddr::new(aligned_hpet_base));
-    let page = Page::containing_address(virt_hpet_base);
-
-    unsafe {
-        // Map de HPET-pagina
-        mapper.map_to(page, frame, Flags::PRESENT | Flags::WRITABLE, frame_allocator)
-            .expect("Failed to map HPET")
-            .flush();
-    }
-
-    virt_hpet_base
 }

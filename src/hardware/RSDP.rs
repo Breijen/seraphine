@@ -1,4 +1,3 @@
-use crate::hardware::HPET::ACPISDTHeader;
 use crate::serial_println;
 
 #[repr(C, packed)]
@@ -59,16 +58,6 @@ fn print_rsdp(rsdp: &Rsdp) {
 pub fn find_and_print_rsdp() {
     if let Some(rsdp) = find_rsdp() {
         print_rsdp(rsdp);
-    } else {
-        serial_println!("RSDP not found.");
-    }
-}
-
-pub fn find_and_print_rsdt() {
-    if let Some(rsdp) = find_rsdp() {
-        let rsdt_address = rsdp.rsdt_address;
-        serial_println!("RSDT Address from RSDP: {:#x}", rsdt_address);
-
     } else {
         serial_println!("RSDP not found.");
     }
