@@ -6,7 +6,7 @@ use x86_64::{
 
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
 use crate::hardware::pit::{pit_init};
-use crate::hardware::rsdp::find_rsdp;
+use crate::hardware::rdsp::find_rsdp;
 use crate::serial_println;
 
 pub struct BootInfoFrameAllocator {
@@ -122,7 +122,7 @@ pub fn map_nvme_base(
         mapper.map_to(page, frame, flags, frame_allocator)
     };
 
-    // serial_println!("{:?}", map_to_result);
+    serial_println!("{:?}", map_to_result);
 
     map_to_result.expect("map_to failed").flush();
 }
