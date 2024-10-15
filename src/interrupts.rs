@@ -24,6 +24,7 @@ pub static PICS: spin::Mutex<ChainedPics> =
 pub enum InterruptIndex {
     Timer = PIC_1_OFFSET,
     Keyboard,
+    NVMe,
 }
 
 impl InterruptIndex {
@@ -50,6 +51,9 @@ lazy_static! {
 
         idt[InterruptIndex::Keyboard.as_usize()]
             .set_handler_fn(keyboard_interrupt_handler);
+
+        idt[InterruptIndex::NVMe.as_usize()] // Register the NVMe handler here
+            .set_handler_fn(nvme_interrupt_handler);
 
         idt.page_fault.set_handler_fn(page_fault_handler);
 
@@ -107,6 +111,16 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(
     unsafe {
         PICS.lock()
             .notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
+    }
+}
+
+extern "x86-interrupt" fn nvme_interrupt_handler(_stack_frame: InterruptStackFrame) {
+    // Read and process NVMe completion queue
+    // handle_nvme_completions();
+
+    // If you're using a legacy PIC, notify the end of interrupt
+    unsafe {
+        PICS.lock().notify_end_of_interrupt(InterruptIndex::NVMe.as_u8());
     }
 }
 

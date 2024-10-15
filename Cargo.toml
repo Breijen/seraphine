@@ -43,7 +43,7 @@ run-args = [
     "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",
     "-serial", "stdio",
     "-drive", "file=nvme_disk.img,if=none,id=nvme",
-    "-device", "nvme,drive=nvme,serial=1234",
+    "-device", "nvme,drive=nvme,serial=deadbeef",
     "-m", "2G",
     "-M", "q35",
 ]

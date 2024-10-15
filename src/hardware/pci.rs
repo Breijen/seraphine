@@ -4,8 +4,6 @@ use crate::{log, serial_println, vga_buffer};
 
 use x86_64::instructions::port::Port;
 
-use crate::filesystem::nvme::read_nvme;
-
 #[derive(Debug, Clone, Copy)]
 pub struct PciDevice {
     pub bus: u8,
@@ -155,7 +153,7 @@ pub fn display_disks(writer: &mut Writer) {
 
     log!(writer, "Start scanning PCI Bus for Mass Storage Controllers...");
 
-    read_nvme(writer);
+    // read_nvme(writer);
 
     // serial_println!("PCI scan completed, storage devices displayed.");
 }
