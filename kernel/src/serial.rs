@@ -1,6 +1,7 @@
 use uart_16550::SerialPort;
 use spin::Mutex;
 use lazy_static::lazy_static;
+use crate::serial_print;
 
 lazy_static! {
     pub static ref SERIAL1: Mutex<SerialPort> = {
@@ -10,16 +11,25 @@ lazy_static! {
     };
 }
 
+/// Early boot-safe serial initialization check
+pub fn init_serial() -> Result<(), &'static str> {
+    // Try to initialize serial port early for debugging
+    // This is safe to call multiple times
+    lazy_static::initialize(&SERIAL1);
+
+    // Send a test message to verify serial is working
+    serial_print!("Serial port initialized for early boot debugging");
+    Ok(())
+}
+
 #[doc(hidden)]
 pub fn _print(args: ::core::fmt::Arguments) {
     use core::fmt::Write;
     use x86_64::instructions::interrupts;
 
+    // Use direct Write trait to avoid heap allocations during early boot
     interrupts::without_interrupts(|| {
-        SERIAL1
-            .lock()
-            .write_fmt(args)
-            .expect("Printing to serial failed");
+        SERIAL1.lock().write_fmt(args).expect("Serial write failed");
     });
 }
 

@@ -3,7 +3,7 @@ use x86_64::{VirtAddr};
 
 use crate::{serial_println};
 use crate::hardware::pci::{read_pci_bar, get_pci_device};
-use crate::hardware::pit::{timer_wait_ms, timer_wait_sec};
+use crate::hardware::pit::{timer_wait_ms};
 use crate::mem::memory::map_nvme_base;
 
 const NVME_RESET_TIMEOUT: u8 = 100;

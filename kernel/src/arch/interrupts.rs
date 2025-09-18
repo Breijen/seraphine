@@ -4,14 +4,12 @@ use x86_64::instructions::port::Port;
 use pic8259::ChainedPics;
 use spin;
 
-use crate::{println, serial_println};
-use crate::print;
+use crate::{println, print, serial_println};
 use crate::gdt;
 use crate::hlt_loop;
 
 use lazy_static::lazy_static;
 use crate::hardware::pit::timer_handler;
-use crate::hardware::vga_buffer::WRITER;
 
 pub const PIC_1_OFFSET: u8 = 32;
 pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
@@ -102,11 +100,14 @@ extern "x86-interrupt" fn timer_interrupt_handler(
 extern "x86-interrupt" fn keyboard_interrupt_handler(
     _stack_frame: InterruptStackFrame)
 {
-
     use x86_64::instructions::port::Port;
 
     let mut port = Port::new(0x60);
     let scancode: u8 = unsafe { port.read() };
+
+    // Debug: Log keyboard interrupts (commented out to reduce binary size)
+    // serial_println!("Keyboard interrupt: scancode 0x{:02x}", scancode);
+
     crate::task::keyboard::add_scancode(scancode);
 
     unsafe {

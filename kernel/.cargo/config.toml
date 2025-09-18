@@ -1,0 +1,12 @@
+[unstable]
+build-std-features = ["compiler-builtins-mem"]
+build-std = ["core", "compiler_builtins", "alloc"]
+
+[build]
+target = "x86-64-seraphine.json"
+
+[target.x86_64-seraphine]
+rustflags = [
+    "-Z", "stack-size=65536",
+    "-Z", "bindeps",
+]

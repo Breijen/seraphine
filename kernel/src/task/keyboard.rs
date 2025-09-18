@@ -9,28 +9,31 @@ use crate::println;
 use futures_util::stream::StreamExt;
 use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
 use crate::print;
-use crate::hardware::vga_buffer::WRITER;
+use crate::hardware::framebuffer;
 
 static SCANCODE_QUEUE: OnceCell<ArrayQueue<u8>> = OnceCell::uninit();
 static WAKER: AtomicWaker = AtomicWaker::new();
 
 pub async fn print_keypresses() {
+    use crate::serial_println;
+
     let mut scancodes = ScancodeStream::new();
     let mut keyboard = Keyboard::new(ScancodeSet1::new(),
                                      layouts::Us104Key, HandleControl::Ignore);
+
+    // Minimal debug output to reduce binary size
+    serial_println!("Keyboard task started");
 
     while let Some(scancode) = scancodes.next().await {
         if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
             if let Some(key) = keyboard.process_keyevent(key_event) {
                 match key {
                     DecodedKey::Unicode(character) => {
-                        if character == '\u{8}' {
-                            WRITER.lock().write_byte(0x08);
-                        } else {
-                            print!("{}", character);
-                        }
+                        framebuffer::handle_keyboard_char(character);
                     },
-                    DecodedKey::RawKey(key) => print!("{:?}", key),
+                    DecodedKey::RawKey(_raw_key) => {
+                        // Ignore raw keys
+                    },
                 }
             }
         }
@@ -40,12 +43,10 @@ pub async fn print_keypresses() {
 pub(crate) fn add_scancode(scancode: u8) {
     if let Ok(queue) = SCANCODE_QUEUE.try_get() {
         if let Err(_) = queue.push(scancode) {
-            println!("WARNING: scancode queue full; dropping keyboard input");
+            // Queue full - drop input silently
         } else {
-            WAKER.wake(); // new
+            WAKER.wake();
         }
-    } else {
-        println!("WARNING: scancode queue uninitialized");
     }
 }
 

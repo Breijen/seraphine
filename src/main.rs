@@ -1,70 +1,21 @@
-#![no_std]
-#![no_main]
-#![feature(custom_test_frameworks)]
-#![test_runner(seraphine::test_runner)]
-#![reexport_test_harness_main = "test_main"]
-#![feature(abi_x86_interrupt)]
+use ovmf_prebuilt::*;
 
-extern crate alloc;
+fn main() {
+    // read env variables that were set in build script
+    let uefi_path = env!("UEFI_PATH");
+    let bios_path = env!("BIOS_PATH");
 
-use core::panic::PanicInfo;
+    // choose whether to start the UEFI or BIOS image
+    let uefi = true;
 
-use bootloader::{BootInfo, entry_point};
-use x86_64::VirtAddr;
-
-use seraphine::{println};
-use seraphine::print;
-use seraphine::task::keyboard;
-use seraphine::mem::memory::{self, BootInfoFrameAllocator};
-use seraphine::mem::allocator;
-use seraphine::filesystem::nvme;
-use seraphine::task::{Task};
-use seraphine::task::executor::Executor;
-
-entry_point!(kernel_main);
-
-fn kernel_main(boot_info: &'static BootInfo) -> ! {
-    println!("Seraphine Control [Version 0.0.1]");
-    println!("(c) Seraphine.");
-    println!(" ");
-    println!("Type 'help' to see available commands.");
-    println!(" ");
-    seraphine::init();
-
-    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
-    let mut mapper = unsafe { memory::init(phys_mem_offset) };
-    let mut frame_allocator = unsafe {
-        BootInfoFrameAllocator::init(&boot_info.memory_map)
-    };
-
-    //Mapping BIOS
-    memory::map_bios_area(&mut mapper, &mut frame_allocator);
-
-    //MAPPING HARD DRIVES
-    nvme::init_controller(&mut mapper, &mut frame_allocator);
-
-    // HEAP ALLOCATOR
-    allocator::init_heap(&mut mapper, &mut frame_allocator)
-        .expect("heap initialization failed");
-
-    let mut executor = Executor::new(); // new
-    executor.spawn(Task::new(keyboard::print_keypresses()));
-    executor.run();
-
-    #[cfg(test)]
-    test_main();
-}
-
-/// This function is called on panic.
-#[cfg(not(test))]
-#[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
-    println!("{}", info);
-    seraphine::hlt_loop();
-}
-
-#[cfg(test)]
-#[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
-    seraphine::test_panic_handler(info)
+    let mut cmd = std::process::Command::new("qemu-system-x86_64");
+    if uefi {
+        cmd.arg("-bios").arg(ovmf_prebuilt::ovmf_pure_efi());
+        cmd.arg("-drive").arg(format!("format=raw,file={uefi_path}"));
+    } else {
+        cmd.arg("-drive").arg(format!("format=raw,file={bios_path}"));
+    }
+    cmd.arg("-serial").arg("stdio");
+    let mut child = cmd.spawn().unwrap();
+    child.wait().unwrap();
 }

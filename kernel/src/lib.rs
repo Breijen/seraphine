@@ -13,15 +13,16 @@ pub mod task;
 pub mod serial;
 pub mod logger;
 
+// Framebuffer macros are automatically available at crate root due to #[macro_export]
+
 extern crate alloc;
 
 #[cfg(test)]
-use bootloader::{entry_point, BootInfo};
+use bootloader_api::{entry_point, BootInfo};
 
 use core::panic::PanicInfo;
 
-use arch::gdt::*;
-use arch::interrupts::*;
+// Remove unused glob imports
 use crate::arch::{gdt, interrupts};
 
 pub trait Testable {
@@ -66,7 +67,7 @@ entry_point!(test_kernel_main);
 
 /// Entry point for `cargo test`
 #[cfg(test)]
-fn test_kernel_main(_boot_info: &'static BootInfo) -> ! {
+fn test_kernel_main(_boot_info: &'static mut BootInfo) -> ! {
     init();
     test_main();
     hlt_loop();
