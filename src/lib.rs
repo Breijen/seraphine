@@ -5,15 +5,12 @@
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
+pub mod arch;
 pub mod hardware;
 pub mod filesystem;
 pub mod mem;
 pub mod task;
 pub mod serial;
-
-pub mod interrupts;
-pub mod gdt;
-pub mod vga_buffer;
 pub mod logger;
 
 extern crate alloc;
@@ -22,6 +19,10 @@ extern crate alloc;
 use bootloader::{entry_point, BootInfo};
 
 use core::panic::PanicInfo;
+
+use arch::gdt::*;
+use arch::interrupts::*;
+use crate::arch::{gdt, interrupts};
 
 pub trait Testable {
     fn run(&self) -> ();

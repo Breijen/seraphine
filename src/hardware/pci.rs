@@ -1,6 +1,6 @@
 use core::fmt::Write;
-use vga_buffer::Writer;
-use crate::{log, serial_println, vga_buffer};
+use crate::hardware::vga_buffer::Writer;
+use crate::{log, serial_println};
 
 use x86_64::instructions::port::Port;
 

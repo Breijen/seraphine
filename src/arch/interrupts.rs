@@ -1,3 +1,4 @@
+
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 use x86_64::instructions::port::Port;
 use pic8259::ChainedPics;
@@ -10,7 +11,7 @@ use crate::hlt_loop;
 
 use lazy_static::lazy_static;
 use crate::hardware::pit::timer_handler;
-use crate::vga_buffer::WRITER;
+use crate::hardware::vga_buffer::WRITER;
 
 pub const PIC_1_OFFSET: u8 = 32;
 pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
