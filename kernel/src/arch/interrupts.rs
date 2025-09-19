@@ -4,12 +4,14 @@ use x86_64::instructions::port::Port;
 use pic8259::ChainedPics;
 use spin;
 
-use crate::{println, print, serial_println};
+use crate::{println, print};
 use crate::gdt;
 use crate::hlt_loop;
 
 use lazy_static::lazy_static;
 use crate::hardware::pit::timer_handler;
+use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
+use crate::hardware::framebuffer;
 
 pub const PIC_1_OFFSET: u8 = 32;
 pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
@@ -17,6 +19,9 @@ pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
 
 pub static PICS: spin::Mutex<ChainedPics> =
     spin::Mutex::new(unsafe { ChainedPics::new(PIC_1_OFFSET, PIC_2_OFFSET)});
+
+static KEYBOARD: spin::Mutex<Keyboard<layouts::Us104Key, ScancodeSet1>> =
+    spin::Mutex::new(Keyboard::new(ScancodeSet1::new(), layouts::Us104Key, HandleControl::Ignore));
 
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
@@ -105,10 +110,21 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(
     let mut port = Port::new(0x60);
     let scancode: u8 = unsafe { port.read() };
 
-    // Debug: Log keyboard interrupts (commented out to reduce binary size)
-    // serial_println!("Keyboard interrupt: scancode 0x{:02x}", scancode);
-
-    crate::task::keyboard::add_scancode(scancode);
+    // Process scancode directly in interrupt handler
+    if let Some(mut keyboard) = KEYBOARD.try_lock() {
+        if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
+            if let Some(key) = keyboard.process_keyevent(key_event) {
+                match key {
+                    DecodedKey::Unicode(character) => {
+                        framebuffer::handle_keyboard_char(character);
+                    },
+                    DecodedKey::RawKey(_raw_key) => {
+                        // Ignore raw keys
+                    },
+                }
+            }
+        }
+    }
 
     unsafe {
         PICS.lock()

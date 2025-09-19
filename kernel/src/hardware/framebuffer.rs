@@ -186,6 +186,7 @@ impl FramebufferWriter {
                 self.write_string("  clear - Clear the screen\n");
                 self.write_string("  echo  - Echo the input text\n");
                 self.write_string("  info  - Show system information\n");
+                self.write_string("  scan  - Scan PCI bus for storage devices\n");
             }
             "clear" => {
                 self.clear();
@@ -205,6 +206,10 @@ impl FramebufferWriter {
                 self.write_string(&alloc::format!("Resolution: {}x{}\n", self.max_width, self.max_height));
                 self.write_string(&alloc::format!("Pixel format: {:?}\n", self.info.pixel_format));
                 self.write_string(&alloc::format!("Bytes per pixel: {}\n", self.info.bytes_per_pixel));
+            }
+            "scan" => {
+                self.write_string("\nScanning PCI bus for storage devices...\n");
+                self.scan_pci_storage();
             }
             "" => {
                 // Empty command, just show new prompt
@@ -399,6 +404,46 @@ impl FramebufferWriter {
             }
         }
     }
+
+    /// Scan PCI bus for storage devices
+    fn scan_pci_storage(&mut self) {
+        use crate::hardware::pci;
+
+        let mut found_any = false;
+
+        // Scan PCI bus for storage controllers (class code 0x01)
+        for bus in 0..=255u8 {
+            for device in 0..32u8 {
+                for function in 0..8u8 {
+                    if let Some(pci_device) = pci::get_pci_device(bus, device, function) {
+                        if pci_device.class_code == 0x01 { // Mass Storage Controller
+                            found_any = true;
+                            let storage_type = match pci_device.subclass_code {
+                                0x01 => "IDE",
+                                0x06 => "SATA",
+                                0x08 => "NVMe",
+                                _ => "Unknown",
+                            };
+
+                            self.write_string(&alloc::format!(
+                                "  {}:{}.{} - {} Controller (Vendor: 0x{:04x}, Device: 0x{:04x})\n",
+                                bus, device, function,
+                                storage_type,
+                                pci_device.vendor_id,
+                                pci_device.device_id
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+
+        if !found_any {
+            self.write_string("  No storage devices found.\n");
+        }
+
+        self.write_string("PCI scan complete.\n");
+    }
 }
 
 impl fmt::Write for FramebufferWriter {
@@ -440,15 +485,20 @@ pub fn _print(args: fmt::Arguments) {
 
 /// Handle keyboard input for the framebuffer shell
 pub fn handle_keyboard_char(c: char) {
-    if let Some(ref mut writer) = FRAMEBUFFER.lock().as_mut() {
-        writer.handle_keyboard_input(c);
+    if let Some(mut guard) = FRAMEBUFFER.try_lock() {
+        if let Some(ref mut writer) = guard.as_mut() {
+            writer.handle_keyboard_input(c);
+        }
     }
+    // If we can't get the lock, drop the input to avoid deadlock
 }
 
 /// Show the initial shell prompt
 pub fn show_initial_prompt() {
-    if let Some(ref mut writer) = FRAMEBUFFER.lock().as_mut() {
-        writer.show_prompt();
+    if let Some(mut guard) = FRAMEBUFFER.try_lock() {
+        if let Some(ref mut writer) = guard.as_mut() {
+            writer.show_prompt();
+        }
     }
 }
 

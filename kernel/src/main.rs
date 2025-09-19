@@ -110,6 +110,10 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
                 fb_println!("Resolution: {}x{}", info.width, info.height);
                 fb_println!("Memory: {}MB", usable_mem / 1024 / 1024);
                 fb_println!("System Ready");
+                fb_println!();
+
+                // Initialize interactive shell
+                framebuffer::show_initial_prompt();
             }
             _ => {
                 serial_println!("Unsupported framebuffer pixel format. Using VGA fallback.");
